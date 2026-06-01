@@ -1,5 +1,5 @@
 """
-TOOL 사용, LLM 적용
+랭그래프 - 단기기억을 위해 메모리 추가
 """
 
 # 1. 모듈 가져오기
@@ -19,19 +19,27 @@ from dotenv import load_dotenv
 import os
 import boto3
 
+# 메모리 관련
+from langgraph.checkpoint.memory import (
+    MemorySaver,
+)  # 단기기억용, 프로그램 종료되면 삭제
+
+# 2. 메모리 생성 -> 현재는 RAM에 저장, 실제는 => 물리적 백터디비
+memory = MemorySaver()
+
 # 2. 환경변수 로드
 load_dotenv()
 
 # 3. LLM 추론용 객체 생성(전역변수)
 #    모델별로 ChatBedrock or ChatBedrockConverse 교체 적용
+#    ChatBedrockConverse => us.anthropic.claude-haiku-4-5-20251001-v1:0
 llm = ChatBedrockConverse(
     model=os.getenv("MODEL_ID"),
     client=boto3.client("bedrock-runtime", region_name=os.getenv("AWS_REGION")),
 )
-# llm = ChatBedrock(
-#     model=os.getenv("MODEL_ID"),
-#     client=boto3.client("bedrock-runtime", region_name=os.getenv("AWS_REGION")),
-# )
+# llm = ChatBedrock(model  = os.getenv('MODEL_ID'),
+#                  client = boto3.client( 'bedrock-runtime', region_name=os.getenv('AWS_REGION') )
+#                )
 
 
 # 4. 툴 준비
@@ -88,24 +96,34 @@ workflow.add_conditional_edges(
 workflow.add_edge("tools", "chatbot")  # tools -> chatbot
 """
 # 사이클 구성
-- 질의 -> chatbot -> llm 호출 -> 응답 -> end
-- 질의 -> chatbot -> llm 호출 -> 응답 -> 부족하고 생각 -> 도구 사용 필요성 
-      -> 툴 -> 툴사용 -> 결과 -> chatbot -> llm 호출 -> 응답 -> end
+- openai (bedrock) 경우
+    - 질의 -> chatbot -> llm 호출 -> 응답 -> end
+- 클로드 (bedrock) 경우
+    - 질의 -> chatbot -> llm 호출 -> 응답 -> 부족하고 생각 -> 도구 사용 필요성 
+          -> 툴 -> 툴사용 -> 결과 -> chatbot -> llm 호출 -> 응답 -> end
 """
 # 그래프 실행가능하게 구성
-app = workflow.compile()
+# TODO 랭그래프 생성시 컴파일 옵션으로 단기기억 공간 제공
+app = workflow.compile(checkpointer=memory)
 
 
 # 테스트
 if __name__ == "__main__":
+    # TODO config 구성
+    config = {
+        "configurable": {"thread_id": "user-1"}
+    }  # 사용자별로 기억관리, "user-1" 고정
     while True:
         # 1. 질의 획득
-        user_input = input("\n유저: ")
+        user_input = input("\n유저: ").lower()
         # 2. 탈출 코드
         if user_input == "q":
             break
+        # 3. 프럼프트 구성
         prompt = {"messages": [HumanMessage(content=user_input)]}
         print(prompt)
-        for evt in app.stream(prompt, stream_mode="values"):
-            msg = evt["messages"][-1]
-            print("Agent", msg.content)
+        # 4. 그래프 작동( invoke: 동기식, stream:비동기식 )
+        # TODO config 세팅
+        for evt in app.stream(prompt, stream_mode="values", config=config):
+            msg = evt["messages"][-1]  # 마지막에 추가된 응답 내용
+            print("Agent", msg.content)  # 출력(실시간 계속 출력)
