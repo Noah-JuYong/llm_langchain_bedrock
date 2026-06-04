@@ -10,3 +10,7 @@ langchain_community
 faiss-cpu
 langchain
 langgraph
+mcp==1.27.2
+botocore
+langsmith
+pydantic
