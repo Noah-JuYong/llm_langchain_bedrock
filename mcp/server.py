@@ -28,6 +28,7 @@ note_memory = dict()
 
 # 5. 툴 구현 (외부에 특정 리소스, s/w, 기타.. ), 편의상 간단한 기능 구성, 6개 구성
 ## Tool 1 : add (두 수를 더하기) -> 함수구성, 타입힌트 명시, 함수 주석
+@mcp.tool()  # 도구로 등록
 def add(a: float, b: float) -> str:
     """
     두 수를 더하는 계신기
@@ -45,6 +46,7 @@ def add(a: float, b: float) -> str:
 
 
 ## Tool 2 : get_time 서버측 현재시간
+@mcp.tool()
 def get_time() -> str:
     """
     서버측 현재 시간을 조회
@@ -59,6 +61,7 @@ def get_time() -> str:
 
 # CRUD 도구
 ## Tool 3 : save_note 메모 저장/업데이트
+@mcp.tool()
 def save_note(note_id: str, note_content: str) -> str:
     """
     메모 저장
@@ -87,6 +90,7 @@ def save_note(note_id: str, note_content: str) -> str:
 
 
 ## Tool 4 : list_note 메모 목록 조회
+@mcp.tool()
 def list_note() -> str:
     """
     저장된 모든 메모 목록 조회
@@ -109,6 +113,7 @@ def list_note() -> str:
 
 
 ## Tool 5 : delete_note 메모 삭제
+@mcp.tool()
 def delete_note(note_id: str) -> str:
     """
     특정 메모 삭제
@@ -130,11 +135,12 @@ def delete_note(note_id: str) -> str:
     pass
 
 
-## Tool 6 : rag_search 검색증강
+## Tool 6 : rag_search 검색증강 -> 최종 연동이 잘 되면 실습 구현
 
 # 6. 서버 가동
 if __name__ == "__main__":
-    logger.info("MCPServer 가동중...")
-    logger.info("STDIO 모드 가동 중..")
+    logger.info("MCPServer 가동 중...")
+    logger.info("STDIO 모드로 가동 중...")
 
+    # stdio 모드로 구동
     mcp.run(transport="stdio")
